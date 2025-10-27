@@ -1,0 +1,24 @@
+{
+  "listeners": [
+    {
+      "name": "Uncle Blazer",
+      "playlistId": "YOUR_SPOTIFY_PLAYLIST_ID_HERE",
+      "color": "#1DB954",
+      "avatar": "🎵"
+    },
+    {
+      "name": "Guest",
+      "playlistId": "YOUR_SPOTIFY_PLAYLIST_ID_HERE",
+      "color": "#7C3AED",
+      "avatar": "👤"
+    }
+  ],
+  "channels": [
+    {
+      "name": "Spotify Discover Weekly",
+      "type": "spotify",
+      "url": "https://open.spotify.com/playlist/37i9dQZEVXcVlO20xhfKBj",
+      "isFeatured": true
+    }
+  ]
+}

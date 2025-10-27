@@ -1,0 +1,101 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: eggystrone/media-portal
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+          export KUBECONFIG=kubeconfig.yaml
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install media-portal ./helm/media-portal \
+            --set image.tag=latest \
+            --set secrets.firebase.apiKey="${{ secrets.FIREBASE_API_KEY }}" \
+            --set secrets.firebase.authDomain="${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
+            --set secrets.firebase.projectId="${{ secrets.FIREBASE_PROJECT_ID }}" \
+            --set secrets.firebase.storageBucket="${{ secrets.FIREBASE_STORAGE_BUCKET }}" \
+            --set secrets.firebase.messagingSenderId="${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" \
+            --set secrets.firebase.appId="${{ secrets.FIREBASE_APP_ID }}" \
+            --set secrets.firebase.measurementId="${{ secrets.FIREBASE_MEASUREMENT_ID }}" \
+            --set secrets.spotify.clientId="${{ secrets.SPOTIFY_CLIENT_ID }}" \
+            --set secrets.spotify.clientSecret="${{ secrets.SPOTIFY_CLIENT_SECRET }}" \
+            --set secrets.nextauth.secret="${{ secrets.NEXTAUTH_SECRET }}" \
+            --set env.nextauthUrl="${{ secrets.NEXTAUTH_URL }}" \
+            --wait \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/media-portal
+          kubectl get pods -l app.kubernetes.io/name=media-portal

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 5 bash:*)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd //c taskkill //PID 82852 //F)",
+      "Bash(npm run dev:proxy:*)",
+      "Bash(timeout 2 bash:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
