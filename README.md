@@ -2,6 +2,8 @@
 
 A Netflix-style interface for Spotify - your personal music hub built with Next.js, Firebase, and Kubernetes.
 
+🌐 **Live at**: https://uncleblazermedia.com
+
 ## Features
 
 - 🎵 **Spotify Integration** - Connect your Spotify account and control playback
