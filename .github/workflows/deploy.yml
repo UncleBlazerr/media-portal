@@ -78,7 +78,6 @@ jobs:
       - name: Configure kubectl
         run: |
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
-          export KUBECONFIG=kubeconfig.yaml
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
@@ -86,6 +85,8 @@ jobs:
           version: 'latest'
 
       - name: Deploy with Helm
+        env:
+          KUBECONFIG: kubeconfig.yaml
         run: |
           helm upgrade --install media-portal ./helm/media-portal \
             --set image.tag=latest \
@@ -104,6 +105,8 @@ jobs:
             --timeout 5m
 
       - name: Verify deployment
+        env:
+          KUBECONFIG: kubeconfig.yaml
         run: |
           kubectl rollout status deployment/media-portal
           kubectl get pods -l app.kubernetes.io/name=media-portal
