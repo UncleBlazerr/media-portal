@@ -254,7 +254,8 @@ function HomeContent() {
         <div className="mt-12">
           {loading ? (
             <div className="text-center py-12">
-              <div className="text-xl">Loading your music...</div>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-green-500"></div>
+              <div className="text-xl mt-4">Loading your music...</div>
             </div>
           ) : (
             <>
