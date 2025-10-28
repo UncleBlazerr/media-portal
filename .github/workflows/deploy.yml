@@ -89,7 +89,7 @@ jobs:
           KUBECONFIG: kubeconfig.yaml
         run: |
           helm upgrade --install media-portal ./helm/media-portal \
-            --set image.tag=latest \
+            --set image.tag=main-${{ github.sha }} \
             --set secrets.firebase.apiKey="${{ secrets.FIREBASE_API_KEY }}" \
             --set secrets.firebase.authDomain="${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             --set secrets.firebase.projectId="${{ secrets.FIREBASE_PROJECT_ID }}" \

@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: eggystrone/media-portal
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   tag: "latest"
 
 service:
