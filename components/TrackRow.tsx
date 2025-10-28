@@ -33,6 +33,11 @@ export default function TrackRow({ title, tracks, onTrackClick, onAddToPlaylist,
                     src={track.imageUrl}
                     alt={track.name}
                     fill
+                    sizes="192px"
+                    quality={60}
+                    placeholder="blur"
+                    blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                    priority={index < 3}
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
