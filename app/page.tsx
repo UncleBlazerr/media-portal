@@ -259,6 +259,7 @@ function HomeContent() {
           ) : (
             <>
               <TrackRow
+                key={`top-${selectedPlaylistId}`}
                 title="Top 5 Most Played"
                 tracks={topTracks}
                 onTrackClick={handleTrackClick}
@@ -266,6 +267,7 @@ function HomeContent() {
                 playlistTrackUris={playlistTrackUris}
               />
               <TrackRow
+                key={`recent-${selectedPlaylistId}`}
                 title="Recently Played"
                 tracks={recentTracks}
                 onTrackClick={handleTrackClick}
