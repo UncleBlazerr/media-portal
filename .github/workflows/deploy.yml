@@ -84,12 +84,16 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Get short SHA
+        id: vars
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
       - name: Deploy with Helm
         env:
           KUBECONFIG: kubeconfig.yaml
         run: |
           helm upgrade --install media-portal ./helm/media-portal \
-            --set image.tag=main-${{ github.sha }} \
+            --set image.tag=main-${{ steps.vars.outputs.short_sha }} \
             --set secrets.firebase.apiKey="${{ secrets.FIREBASE_API_KEY }}" \
             --set secrets.firebase.authDomain="${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             --set secrets.firebase.projectId="${{ secrets.FIREBASE_PROJECT_ID }}" \
