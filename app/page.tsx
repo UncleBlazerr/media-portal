@@ -17,6 +17,7 @@ function HomeContent() {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [playlistTrackUris, setPlaylistTrackUris] = useState<Set<string>>(new Set());
+  const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ function HomeContent() {
   useEffect(() => {
     if (!session?.accessToken || !selectedPlaylistId) {
       setPlaylistTrackUris(new Set());
+      setPlaylistTracks([]);
       return;
     }
 
@@ -62,6 +64,7 @@ function HomeContent() {
       const tracks = await spotify.getPlaylistTracks(selectedPlaylistId);
       const uris = new Set(tracks.map(track => track.uri));
       setPlaylistTrackUris(uris);
+      setPlaylistTracks(tracks);
     };
 
     fetchPlaylistTracks();
@@ -110,6 +113,9 @@ function HomeContent() {
       if (response.ok) {
         // Update the local set to hide the button
         setPlaylistTrackUris(prev => new Set(prev).add(track.uri));
+
+        // Add track to the playlist display
+        setPlaylistTracks(prev => [...prev, track]);
 
         const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId);
         alert(`Added "${track.name}" to ${selectedPlaylist?.name || 'playlist'}!`);
@@ -219,6 +225,19 @@ function HomeContent() {
             Click any song below to add it to the selected playlist
           </p>
         </div>
+
+        {/* Current Playlist Tracks */}
+        {selectedPlaylistId && playlistTracks.length > 0 && (
+          <div className="mb-8">
+            <TrackRow
+              title={`${playlists.find(p => p.id === selectedPlaylistId)?.name || 'Playlist'} (${playlistTracks.length} songs)`}
+              tracks={playlistTracks}
+              onTrackClick={handleTrackClick}
+              onAddToPlaylist={handleAddToPlaylist}
+              playlistTrackUris={playlistTrackUris}
+            />
+          </div>
+        )}
 
         <ListenerSelector
           selectedListener={selectedListener}
