@@ -78,6 +78,16 @@ function HomeContent() {
     try {
       const spotify = new SpotifyClient(session.accessToken);
       await spotify.playTrack(track.uri);
+
+      // Wait for Spotify to register the play, then refresh Recently Played
+      setTimeout(async () => {
+        try {
+          const updatedRecent = await spotify.getRecentlyPlayed(10);
+          setRecentTracks(updatedRecent);
+        } catch (error) {
+          console.error('Error refreshing recently played:', error);
+        }
+      }, 1500);
     } catch (error: any) {
       console.error('Error playing track:', error);
 
