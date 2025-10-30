@@ -4,30 +4,60 @@ import { useEffect, useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { Providers } from './providers';
 import ListenerSelector from '@/components/ListenerSelector';
+import MusicProfileSelector from '@/components/MusicProfileSelector';
+import CreateProfileModal from '@/components/CreateProfileModal';
 import NowPlaying from '@/components/NowPlaying';
 import TrackRow from '@/components/TrackRow';
-import { ListenerProfile, Track } from '@/types';
+import { ListenerProfile, Track, MusicProfile } from '@/types';
 import { SpotifyClient } from '@/lib/spotify';
+import { useMusicProfiles } from '@/hooks/useMusicProfiles';
+import { filterPlaylistsByProfile, SpotifyPlaylist } from '@/lib/playlistFilters';
 
 function HomeContent() {
   const { data: session, status } = useSession();
+
+  // Music Profiles
+  const { profiles, loading: profilesLoading, createProfile, fetchProfiles } = useMusicProfiles();
+  const [selectedProfile, setSelectedProfile] = useState<MusicProfile | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Listeners (legacy - for "add to playlist" functionality)
   const [selectedListener, setSelectedListener] = useState<ListenerProfile | null>(null);
+
+  // Spotify Data
   const [topTracks, setTopTracks] = useState<Track[]>([]);
   const [recentTracks, setRecentTracks] = useState<Track[]>([]);
-  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [allPlaylists, setAllPlaylists] = useState<SpotifyPlaylist[]>([]);
+  const [filteredPlaylists, setFilteredPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
   const [playlistTrackUris, setPlaylistTrackUris] = useState<Set<string>>(new Set());
   const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  // Initial data fetch
   useEffect(() => {
     if (!session?.accessToken) {
       setLoading(false);
       return;
     }
 
-    const fetchData = async () => {
-      const spotify = new SpotifyClient(session.accessToken!);
+    fetchSpotifyData();
+  }, [session]);
+
+  // Fetch Spotify data (playlists, tracks, etc.)
+  const fetchSpotifyData = async () => {
+    if (!session?.accessToken) return;
+
+    const isRefresh = allPlaylists.length > 0;
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const spotify = new SpotifyClient(session.accessToken);
 
       const [top, recent, userPlaylists] = await Promise.all([
         spotify.getTopTracks(5),
@@ -37,19 +67,63 @@ function HomeContent() {
 
       setTopTracks(top);
       setRecentTracks(recent);
-      setPlaylists(userPlaylists);
+      setAllPlaylists(userPlaylists);
 
       // Auto-select "Ryder's Jammies" playlist or first playlist as fallback
-      if (userPlaylists.length > 0) {
-        const rydersPlaylist = userPlaylists.find(p => p.name === "Ryder's Jammies");
+      if (userPlaylists.length > 0 && !selectedPlaylistId) {
+        const rydersPlaylist = userPlaylists.find((p) => p.name === "Ryder's Jammies");
         setSelectedPlaylistId(rydersPlaylist?.id || userPlaylists[0].id);
       }
-
+    } catch (error) {
+      console.error('Error fetching Spotify data:', error);
+    } finally {
       setLoading(false);
-    };
+      setRefreshing(false);
+    }
+  };
 
-    fetchData();
-  }, [session]);
+  // Filter playlists based on selected profile
+  useEffect(() => {
+    if (!selectedProfile) {
+      setFilteredPlaylists([]);
+      return;
+    }
+
+    const filtered = filterPlaylistsByProfile(allPlaylists, selectedProfile);
+    setFilteredPlaylists(filtered);
+
+    // Auto-select first filtered playlist if current selection isn't in filtered list
+    if (filtered.length > 0) {
+      const isCurrentInFiltered = filtered.some((p) => p.id === selectedPlaylistId);
+      if (!isCurrentInFiltered) {
+        setSelectedPlaylistId(filtered[0].id);
+      }
+    } else {
+      setSelectedPlaylistId('');
+    }
+  }, [selectedProfile, allPlaylists]);
+
+  // Handle profile selection - refresh data when profile changes
+  const handleProfileSelect = async (profile: MusicProfile) => {
+    setSelectedProfile(profile);
+    // Optionally refresh playlists when switching profiles
+    await fetchSpotifyData();
+  };
+
+  // Handle profile creation
+  const handleCreateProfile = async (
+    name: string,
+    keywords: string[],
+    color: string,
+    icon: string
+  ) => {
+    const newProfile = await createProfile(name, keywords, color, icon);
+    if (newProfile) {
+      setSelectedProfile(newProfile);
+      // Refresh playlists after creating a new profile
+      await fetchSpotifyData();
+    }
+  };
 
   // Fetch playlist tracks when playlist changes
   useEffect(() => {
@@ -127,7 +201,7 @@ function HomeContent() {
         // Add track to the playlist display
         setPlaylistTracks(prev => [...prev, track]);
 
-        const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId);
+        const selectedPlaylist = filteredPlaylists.find(p => p.id === selectedPlaylistId);
         alert(`Added "${track.name}" to ${selectedPlaylist?.name || 'playlist'}!`);
       } else {
         alert('Failed to add song to playlist');
@@ -210,37 +284,73 @@ function HomeContent() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
+        {/* Create Profile Modal */}
+        <CreateProfileModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={handleCreateProfile}
+        />
+
+        {/* Music Profile Selector */}
+        <MusicProfileSelector
+          profiles={profiles}
+          selectedProfile={selectedProfile}
+          onSelect={handleProfileSelect}
+          onCreateNew={() => setIsCreateModalOpen(true)}
+          loading={profilesLoading}
+        />
+
+        {/* Refresh Button */}
+        {selectedProfile && (
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <h3 className="text-xl font-semibold">
+                {filteredPlaylists.length} Playlist{filteredPlaylists.length !== 1 ? 's' : ''} Found
+              </h3>
+              <p className="text-sm text-gray-400">
+                Matching keywords: {selectedProfile.keywords.join(', ')}
+              </p>
+            </div>
+            <button
+              onClick={fetchSpotifyData}
+              disabled={refreshing}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
+              {refreshing ? 'Refreshing...' : 'Refresh Playlists'}
+            </button>
+          </div>
+        )}
+
         {/* Playlist Selector Dropdown */}
-        <div className="mb-8">
-          <label htmlFor="playlist-select" className="block text-lg font-semibold mb-2">
-            Select Playlist to Add Songs:
-          </label>
-          <select
-            id="playlist-select"
-            value={selectedPlaylistId}
-            onChange={(e) => setSelectedPlaylistId(e.target.value)}
-            className="w-full max-w-md px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 hover:bg-gray-750 transition-colors"
-          >
-            {playlists.length === 0 ? (
-              <option value="">No playlists found</option>
-            ) : (
-              playlists.map((playlist) => (
+        {selectedProfile && filteredPlaylists.length > 0 && (
+          <div className="mb-8">
+            <label htmlFor="playlist-select" className="block text-lg font-semibold mb-2">
+              Select Playlist to Add Songs:
+            </label>
+            <select
+              id="playlist-select"
+              value={selectedPlaylistId}
+              onChange={(e) => setSelectedPlaylistId(e.target.value)}
+              className="w-full max-w-md px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 hover:bg-gray-750 transition-colors"
+            >
+              {filteredPlaylists.map((playlist) => (
                 <option key={playlist.id} value={playlist.id}>
                   {playlist.name} ({playlist.trackCount} tracks)
                 </option>
-              ))
-            )}
-          </select>
-          <p className="mt-2 text-sm text-gray-400">
-            Click any song below to add it to the selected playlist
-          </p>
-        </div>
+              ))}
+            </select>
+            <p className="mt-2 text-sm text-gray-400">
+              Click any song below to add it to the selected playlist
+            </p>
+          </div>
+        )}
 
         {/* Current Playlist Tracks */}
         {selectedPlaylistId && playlistTracks.length > 0 && (
           <div className="mb-8">
             <TrackRow
-              title={`${playlists.find(p => p.id === selectedPlaylistId)?.name || 'Playlist'} (${playlistTracks.length} songs)`}
+              title={`${filteredPlaylists.find(p => p.id === selectedPlaylistId)?.name || 'Playlist'} (${playlistTracks.length} songs)`}
               tracks={playlistTracks}
               onTrackClick={handleTrackClick}
               onAddToPlaylist={handleAddToPlaylist}

@@ -35,3 +35,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# kubernetes config (contains sensitive credentials)
+kubeconfig.yaml
+kubeconfig-base64.txt

@@ -32,17 +32,12 @@ export interface CurrentlyPlaying {
   timestamp: number;
 }
 
-export interface Channel {
+export interface MusicProfile {
   id: string;
   name: string;
-  type: 'spotify' | 'youtube';
-  url: string;
-  thumbnail?: string;
-  isFeatured?: boolean;
-}
-
-export interface UIState {
-  selectedListener: ListenerProfile | null;
-  currentView: 'home' | 'playlists' | 'search';
-  isLoading: boolean;
+  keywords: string[]; // Array of keywords for playlist matching (case-insensitive)
+  color: string;
+  icon?: string; // Optional emoji or icon
+  createdAt?: Date;
+  updatedAt?: Date;
 }
