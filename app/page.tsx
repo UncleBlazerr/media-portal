@@ -17,7 +17,7 @@ function HomeContent() {
   const { data: session, status } = useSession();
 
   // Music Profiles
-  const { profiles, loading: profilesLoading, createProfile, fetchProfiles } = useMusicProfiles();
+  const { profiles, loading: profilesLoading, createProfile, deleteProfile, fetchProfiles } = useMusicProfiles();
   const [selectedProfile, setSelectedProfile] = useState<MusicProfile | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -85,7 +85,13 @@ function HomeContent() {
   // Filter playlists based on selected profile
   useEffect(() => {
     if (!selectedProfile) {
-      setFilteredPlaylists([]);
+      // Show all playlists when no profile is selected
+      setFilteredPlaylists(allPlaylists);
+      // Auto-select first playlist if none selected
+      if (allPlaylists.length > 0 && !selectedPlaylistId) {
+        const rydersPlaylist = allPlaylists.find((p) => p.name === "Ryder's Jammies");
+        setSelectedPlaylistId(rydersPlaylist?.id || allPlaylists[0].id);
+      }
       return;
     }
 
@@ -123,6 +129,22 @@ function HomeContent() {
       // Refresh playlists after creating a new profile
       await fetchSpotifyData();
     }
+  };
+
+  // Handle profile deletion
+  const handleDeleteProfile = async (profileId: string) => {
+    const success = await deleteProfile(profileId);
+    if (success) {
+      // If we deleted the currently selected profile, clear the selection
+      if (selectedProfile?.id === profileId) {
+        setSelectedProfile(null);
+      }
+    }
+  };
+
+  // Handle clearing profile selection
+  const handleClearSelection = () => {
+    setSelectedProfile(null);
   };
 
   // Fetch playlist tracks when playlist changes
@@ -297,19 +319,23 @@ function HomeContent() {
           selectedProfile={selectedProfile}
           onSelect={handleProfileSelect}
           onCreateNew={() => setIsCreateModalOpen(true)}
+          onDelete={handleDeleteProfile}
+          onClearSelection={handleClearSelection}
           loading={profilesLoading}
         />
 
         {/* Refresh Button */}
-        {selectedProfile && (
+        {filteredPlaylists.length > 0 && (
           <div className="mb-6 flex justify-between items-center">
             <div>
               <h3 className="text-xl font-semibold">
-                {filteredPlaylists.length} Playlist{filteredPlaylists.length !== 1 ? 's' : ''} Found
+                {filteredPlaylists.length} Playlist{filteredPlaylists.length !== 1 ? 's' : ''} {selectedProfile ? 'Found' : 'Available'}
               </h3>
-              <p className="text-sm text-gray-400">
-                Matching keywords: {selectedProfile.keywords.join(', ')}
-              </p>
+              {selectedProfile && (
+                <p className="text-sm text-gray-400">
+                  Matching keywords: {selectedProfile.keywords.join(', ')}
+                </p>
+              )}
             </div>
             <button
               onClick={fetchSpotifyData}
@@ -323,7 +349,7 @@ function HomeContent() {
         )}
 
         {/* Playlist Selector Dropdown */}
-        {selectedProfile && filteredPlaylists.length > 0 && (
+        {filteredPlaylists.length > 0 && (
           <div className="mb-8">
             <label htmlFor="playlist-select" className="block text-lg font-semibold mb-2">
               Select Playlist to Add Songs:

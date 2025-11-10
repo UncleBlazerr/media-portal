@@ -7,7 +7,10 @@
       "Bash(findstr:*)",
       "Bash(cmd //c taskkill //PID 82852 //F)",
       "Bash(npm run dev:proxy:*)",
-      "Bash(timeout 2 bash:*)"
+      "Bash(timeout 2 bash:*)",
+      "Bash(kubectl:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []
